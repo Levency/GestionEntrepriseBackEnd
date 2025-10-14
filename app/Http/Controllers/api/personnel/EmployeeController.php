@@ -22,17 +22,17 @@ class EmployeeController extends Controller
         $status = $request->get('status');
         $search = $request->get('search');
         
-        $query = Employee::with(['user', 'department']);
+        $query = Employee::with( 'department');
         
         if ($department) {
             $query->where('department_id', $department);
         }
         
-        if ($status === 'active') {
-            $query->whereHas('user', fn($q) => $q->where('is_active', true));
-        } elseif ($status === 'inactive') {
-            $query->whereHas('user', fn($q) => $q->where('is_active', false));
-        }
+        // if ($status === 'active') {
+        //     $query->whereHas('user', fn($q) => $q->where('is_active', true));
+        // } elseif ($status === 'inactive') {
+        //     $query->whereHas('user', fn($q) => $q->where('is_active', false));
+        // }
         
         if ($search) {
             $query->whereHas('user', function($q) use ($search) {
@@ -55,62 +55,41 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255|min:3',
+            'last_name' => 'required|string|max:255|min:3',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
-            'password' => 'required|string|min:6',
-            'role' => 'required|in:admin,manager,cashier,employee',
-            'employee_id' => 'required|unique:employees,employee_id',
             'position' => 'required|string',
             'department_id' => 'nullable|exists:departments,id',
-            'hire_date' => 'required|date',
             'salary' => 'required|numeric|min:0',
-            'employment_type' => 'required|in:full_time,part_time,contract',
-            'national_id' => 'nullable|string',
-            'date_of_birth' => 'nullable|date',
-            'gender' => 'nullable|in:male,female,other',
+            'status' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
         DB::beginTransaction();
         try {
             // Créer l'utilisateur
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'is_active' => true,
-            ]);
+            // $user = User::create([
+            //     'name' => $request->name,
+            //     'email' => $request->email,
+            //     'phone' => $request->phone,
+            //     'password' => Hash::make($request->password),
+            //     'role' => $request->role,
+            //     'is_active' => true,
+            // ]);
             
             // Créer l'employé
             $employee = Employee::create([
-                'user_id' => $user->id,
-                'employee_id' => $request->employee_id,
-                'national_id' => $request->national_id,
+                'employee_code' => 'CODE-' . date('YmdHis') . rand(100, 999),
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
                 'position' => $request->position,
                 'department_id' => $request->department_id,
-                'hire_date' => $request->hire_date,
-                'date_of_birth' => $request->date_of_birth,
-                'gender' => $request->gender,
-                'marital_status' => $request->marital_status,
-                'children_count' => $request->children_count ?? 0,
                 'salary' => $request->salary,
-                'employment_type' => $request->employment_type,
-                'transport_allowance' => $request->transport_allowance ?? 0,
-                'housing_allowance' => $request->housing_allowance ?? 0,
-                'meal_allowance' => $request->meal_allowance ?? 0,
-                'emergency_contact' => $request->emergency_contact,
-                'emergency_phone' => $request->emergency_phone,
-                'bank_name' => $request->bank_name,
-                'bank_account' => $request->bank_account,
+                'status' => $request->status,
+
             ]);
             
             DB::commit();
@@ -118,7 +97,7 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employé créé avec succès',
-                'data' => $employee->load(['user', 'department'])
+                'data' => $employee->load( 'department')
             ], 201);
             
         } catch (\Exception $e) {
@@ -135,7 +114,7 @@ class EmployeeController extends Controller
      */
     public function show($id)
     {
-        $employee = Employee::with(['user', 'department'])->find($id);
+        $employee = Employee::with( 'department')->find($id);
         
         if (!$employee) {
             return response()->json([
@@ -150,9 +129,9 @@ class EmployeeController extends Controller
             'present_days' => $employee->attendances()->where('status', 'present')->count(),
             'absent_days' => $employee->attendances()->where('status', 'absent')->count(),
             'late_days' => $employee->attendances()->where('status', 'late')->count(),
-            'total_leaves' => $employee->leaves()->count(),
-            'pending_leaves' => $employee->leaves()->where('status', 'pending')->count(),
-            'approved_leaves' => $employee->leaves()->where('status', 'approved')->count(),
+            // 'total_leaves' => $employee->leaves()->count(),
+            // 'pending_leaves' => $employee->leaves()->where('status', 'pending')->count(),
+            // 'approved_leaves' => $employee->leaves()->where('status', 'approved')->count(),
         ];
         
         return response()->json([
@@ -187,22 +166,16 @@ class EmployeeController extends Controller
             'salary' => 'required|numeric|min:0',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
         DB::beginTransaction();
         try {
             // Mettre à jour l'utilisateur
-            $employee->user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'role' => $request->role ?? $employee->user->role,
-            ]);
+            // $employee->user->update([
+            //     'name' => $request->name,
+            //     'email' => $request->email,
+            //     'phone' => $request->phone,
+            //     'role' => $request->role ?? $employee->user->role,
+            // ]);
             
             // Mettre à jour l'employé
             $employee->update($request->except(['name', 'email', 'phone', 'password', 'role']));
@@ -240,7 +213,7 @@ class EmployeeController extends Controller
         
         DB::beginTransaction();
         try {
-            $employee->user->delete();
+            // $employee->user->delete();
             $employee->delete();
             
             DB::commit();
@@ -274,7 +247,7 @@ class EmployeeController extends Controller
         }
         
         $attendances = $employee->attendances()
-            ->latest('date')
+            ->latest('created_at')
             ->paginate(30);
         
         return response()->json([
@@ -321,7 +294,7 @@ class EmployeeController extends Controller
             ], 404);
         }
         
-        $employee->user->update(['is_active' => true]);
+        $employee->update(['status' => 'Activate']);
         
         return response()->json([
             'success' => true,
@@ -343,7 +316,7 @@ class EmployeeController extends Controller
             ], 404);
         }
         
-        $employee->user->update(['is_active' => false]);
+        $employee->update(['status' => 'Deactivate']);
         
         return response()->json([
             'success' => true,

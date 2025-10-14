@@ -1,11 +1,16 @@
 <?php
 
+use App\Models\Departement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\sales\SalesController;
 use App\Http\Controllers\api\stock\ProductController;
 use App\Http\Controllers\api\stock\CategoryController;
+use App\Http\Controllers\api\personnel\PayrollController;
+use App\Http\Controllers\api\personnel\EmployeeController;
 use App\Http\Controllers\api\stock\StockMovementController;
+use App\Http\Controllers\api\personnel\AttendanceController;
+use App\Http\Controllers\api\personnel\DepartmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,11 +29,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Products
     Route::apiResource('products', ProductController::class);
-    Route::get('produuts/index', [ProductController::class, 'index']);
-    Route::post('products/store', [ProductController::class, 'store']);
-    Route::post('products/{id}/show', [ProductController::class, 'show']);
-    Route::post('products/{id}/update', [ProductController::class, 'update']);
-    Route::delete('products/{id}/destroy', [ProductController::class, 'destroy']);
+    // Route::get('produuts/index', [ProductController::class, 'index']);
+    // Route::post('products/store', [ProductController::class, 'store']);
+    // Route::post('products/{id}/show', [ProductController::class, 'show']);
+    // Route::post('products/{id}/update', [ProductController::class, 'update']);
+    // Route::delete('products/{id}/destroy', [ProductController::class, 'destroy']);
 
     Route::post('products/bulk-import', [ProductController::class, 'bulkImport']);
     Route::get('products/low-stock/alert', [ProductController::class, 'lowStockAlert']);
@@ -68,6 +73,44 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     Route::get('sales/{sale}/print', [SalesController::class, 'print']);
     Route::get('sales/today/summary', [SalesController::class, 'todaySummary']);
     Route::post('sales/quick-sale', [SalesController::class, 'quickSale']);
+
+    // Employees
+    Route::apiResource('employees', EmployeeController::class);
+    Route::post('employees/store', [EmployeeController::class, 'store']);
+    Route::get('employees/{id}/show', [EmployeeController::class, 'show']);
+    Route::post('employees/{id}/update', [EmployeeController::class, 'update']);
+    Route::delete('employees/{id}/destroy', [EmployeeController::class, 'destroy']);
+    Route::get('employees/{employee}/attendance-history', [EmployeeController::class, 'attendanceHistory']);
+    Route::get('employees/{employee}/payroll-history', [EmployeeController::class, 'payrollHistory']);
+    Route::post('employees/{employee}/activate', [EmployeeController::class, 'activate']);
+    Route::post('employees/{employee}/deactivate', [EmployeeController::class, 'deactivate']);
+    
+    // Attendance
+    Route::get('attendance', [AttendanceController::class, 'index']);
+    Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
+    Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
+    Route::get('attendance/today', [AttendanceController::class, 'today']);
+    Route::get('attendance/employee/{employee}', [AttendanceController::class, 'byEmployee']);
+    Route::post('attendance/mark-absent', [AttendanceController::class, 'markAbsent']);
+    Route::get('attendance/summary', [AttendanceController::class, 'summary']);
+    
+    // Payroll
+    Route::apiResource('payrolls', PayrollController::class);
+    Route::post('payrolls/store', [PayrollController::class, 'store']);
+    
+    Route::post('payrolls/generate', [PayrollController::class, 'generate']);
+    Route::post('payrolls/{payroll}/pay', [PayrollController::class, 'markAsPaid']);
+    Route::get('payrolls/period/{period}', [PayrollController::class, 'byPeriod']);
+    Route::get('payrolls/employee/{employee}', [PayrollController::class, 'byEmployee']);
+    
+    
+    // Departments
+    Route::apiResource('departments', DepartmentController::class);
+    Route::post('departments/store', [DepartmentController::class, 'store']);
+    Route::post('departments/{id}/update', [DepartmentController::class, 'update']);
+    Route::get('departments/{id}/show', [DepartmentController::class, 'show']);
+    Route::delete('departments/{id}/destroy', [DepartmentController::class, 'destroy']);
+    Route::get('departments/{department}/employees', [DepartmentController::class, 'employees']);
 
 
     

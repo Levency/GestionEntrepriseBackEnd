@@ -15,8 +15,9 @@ class Employee extends Model
         'email',
         'phone',
         'position',
-        'department',
+        'department_id',
         'salary',
+        'status'
     ];
 
     public function attendances()
@@ -26,6 +27,10 @@ class Employee extends Model
     public function payrolls()
     {
         return $this->hasMany(Payroll::class);
+    }
+    public function department()
+    {
+        return $this->belongsTo(Departement::class);
     }
     public function user()
     {

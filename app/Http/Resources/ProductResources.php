@@ -22,6 +22,7 @@ class ProductResources extends JsonResource
                 'id' => $this->category->id,
                 'name' => $this->category->name,
             ],
+            'stok_movements' => StokMouvementResource::collection($this->whenLoaded('stockMouvements')),
             'purchase_price' => $this->purchase_price,
             'selling_price' => $this->selling_price,
             'stock_quantity' => $this->stock_quantity,

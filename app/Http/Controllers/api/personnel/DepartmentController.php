@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\personnel;
 
+use App\Models\Departement;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
@@ -13,9 +14,7 @@ class DepartmentController extends Controller
      */
     public function index()
     {
-        $departments = Department::withCount('employees')
-            ->with('manager')
-            ->get();
+        $departments = Departement::all();
         
         return response()->json([
             'success' => true,
@@ -31,23 +30,22 @@ class DepartmentController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:departments,name',
             'description' => 'nullable|string',
-            'manager_id' => 'nullable|exists:users,id',
+            'icon' => 'required|string'
         ]);
 
-        if ($validator->fails()) {
+        try {
+            //code...
+            $department = Departement::create($request->all());
+            
             return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+                'success' => true,
+                'message' => 'Département créé avec succès',
+                'data' => $department
+            ], 201);
+        } catch (\Throwable $th) {
+            //throw $th;
         }
 
-        $department = Department::create($request->all());
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Département créé avec succès',
-            'data' => $department
-        ], 201);
     }
 
     /**
@@ -55,9 +53,7 @@ class DepartmentController extends Controller
      */
     public function show($id)
     {
-        $department = Department::withCount('employees')
-            ->with('manager')
-            ->find($id);
+        $department = Departement::find($id);
         
         if (!$department) {
             return response()->json([
@@ -77,7 +73,7 @@ class DepartmentController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $department = Department::find($id);
+        $department = Departement::find($id);
         
         if (!$department) {
             return response()->json([
@@ -89,23 +85,22 @@ class DepartmentController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:departments,name,' . $id,
             'description' => 'nullable|string',
-            'manager_id' => 'nullable|exists:users,id',
+            'icon' => 'required|string'
         ]);
 
-        if ($validator->fails()) {
+        try {
+            //code...
+            $department->update($request->all());
+            
             return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+                'success' => true,
+                'message' => 'Département mis à jour avec succès',
+                'data' => $department
+            ]);
+        } catch (\Throwable $th) {
+            //throw $th;
         }
 
-        $department->update($request->all());
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Département mis à jour avec succès',
-            'data' => $department
-        ]);
     }
 
     /**
@@ -113,7 +108,7 @@ class DepartmentController extends Controller
      */
     public function destroy($id)
     {
-        $department = Department::find($id);
+        $department = Departement::find($id);
         
         if (!$department) {
             return response()->json([
@@ -122,12 +117,12 @@ class DepartmentController extends Controller
             ], 404);
         }
         
-        if ($department->employees()->count() > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer un département avec des employés'
-            ], 400);
-        }
+        // if ($department->employees()->count() > 0) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Impossible de supprimer un département avec des employés'
+        //     ], 400);
+        // }
         
         $department->delete();
         
@@ -142,7 +137,7 @@ class DepartmentController extends Controller
      */
     public function employees($id)
     {
-        $department = Department::find($id);
+        $department = Departement::find($id);
         
         if (!$department) {
             return response()->json([
@@ -152,7 +147,6 @@ class DepartmentController extends Controller
         }
         
         $employees = $department->employees()
-            ->with('user')
             ->get();
         
         return response()->json([

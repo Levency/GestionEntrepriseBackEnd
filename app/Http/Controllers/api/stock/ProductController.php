@@ -24,23 +24,23 @@ class ProductController extends Controller
         $perPage = $request->get('per_page', 15);
         $categoryId = $request->get('category_id');
         $isActive = $request->get('is_active');
-        
-        $query = Produit::with('category');
-        
+
+        $query = Produit::with(['category', 'stockMouvements']);
+
         if ($categoryId) {
             $query->where('category_id', $categoryId);
         }
-        
+
         if ($isActive !== null) {
             $query->where('is_active', $isActive);
         }
-        
+
         $produit = $query->latest()->paginate($perPage);
-        
-        return response()->json([
-            'success' => true,
-            'data' => ProductResources::collection($produit)
-        ]);
+
+        return successResponse(
+            'Produits récupérés avec succès',
+            ProductResources::collection($produit)
+        );
     }
 
     /**
@@ -57,10 +57,10 @@ class ProductController extends Controller
         $request->selling_price = $request->selling_price ?? 0;
 
 
-        
+
         DB::beginTransaction();
         try {
-            
+
             $product = Produit::create($request->all());
 
             // Créer un mouvement de stock initial
@@ -70,59 +70,45 @@ class ProductController extends Controller
                 'quantity' => $product->stock_quantity,
                 'reason' => 'Stock initial'
             ]);
-            
+
             DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Produit créé avec succès',
-                'data' => $product
-            ], 201);
-            
+
+            return successResponse(
+                'Produit créé avec succès',
+                new ProductResources($product)
+            );
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur lors de la création: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Afficher un produit spécifique
      */
-    public function show($id)
+    public function show(Produit $product)
     {
-        $product = Produit::with(['category', 'stockMouvements' => function($query) {
-            $query->latest()->limit(10);
-        }])->find($id);
         
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Produit non trouvé'
-            ], 404);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'data' => $product
-        ]);
+
+        return successResponse(
+            'Produit récupéré avec succès',
+            ProductResources::make($product->load(
+                'category',
+                'stockMouvements'
+            ))
+        );
     }
 
     /**
      * Mettre à jour un produit
      */
-    public function update(ProductRequest $request, $id)
+    public function update(ProductRequest $request, Produit $product)
     {
-        $product = Produit::find($id);
-        
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Produit non trouvé'
-            ], 404);
-        }
+        // $product = Produit::find($product);
 
         $request->name = $request->name ?? 'Produit ' . date('YmdHis');
         $request->category_id = $request->category_id ?? 1; // Catégorie par défaut
@@ -132,90 +118,61 @@ class ProductController extends Controller
         $request->selling_price = $request->selling_price ?? 0;
         $request->code = $request->code ?? 'PROD-' . strtoupper(uniqid());
 
-        
+
 
         try {
-            
+
             $product->update($request->all());
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Produit mis à jour avec succès',
-                'data' => $product
-            ]);
-            
+
+            return successResponse(
+                'Produit mis à jour avec succès',
+                new ProductResources($product)
+            );
+
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur lors de la création: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Supprimer un produit
      */
-    public function destroy($id)
+    public function destroy(Produit $product)
     {
-        $product = Produit::find($id);
-        
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Produit non trouvé'
-            ], 404);
-        }
-        
         try {
-            
             $product->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Produit supprimé avec succès'
-            ]);
-            
+
+            return successResponse(
+                'Produit supprimé avec succès'
+            );
+
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur lors de la suppression: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Ajuster le stock d'un produit
      */
-    public function adjustStock(Request $request, $id)
+    public function adjustStock(Request $request, Produit $product)
     {
-        $product = Produit::find($id);
-        // dd($product);
-        
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Produit non trouvé'
-            ], 404);
-        }
-        
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:in,out,adjustment',
             'quantity' => 'required|integer|min:1',
             'reason' => 'required|string'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         DB::beginTransaction();
         try {
             $previousStock = $product->stock_quantity;
             $quantity = $request->quantity;
-            
+
             switch ($request->type) {
                 case 'in':
                     $newStock = $previousStock + $quantity;
@@ -234,10 +191,10 @@ class ProductController extends Controller
                     $quantity = $newStock - $previousStock;
                     break;
             }
-            
+
             // Mettre à jour le stock
             $product->update(['stock_quantity' => $newStock]);
-            
+
             // Enregistrer le mouvement
             StockMouvement::create([
                 'produit_id' => $product->id,
@@ -247,25 +204,20 @@ class ProductController extends Controller
                 'new_stock' => $newStock,
                 'reason' => $request->reason
             ]);
-            
+
             DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Stock ajusté avec succès',
-                'data' => [
-                    'previous_stock' => $previousStock,
-                    'new_stock' => $newStock,
-                    'difference' => $quantity
-                ]
+
+            return successResponse([
+                "Ajustement reussie",
+                new ProductResources($product)
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'ajustement: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur lors de l\'ajustement du stock: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
@@ -277,12 +229,11 @@ class ProductController extends Controller
         $produit = Produit::whereColumn('stock_quantity', '<=', 'min_stock_level')
             ->with('category')
             ->get();
-        
-        return response()->json([
-            'success' => true,
-            'count' => $produit->count(),
-            'data' => ProductResources::collection($produit)
-        ]);
+
+            return successResponse(
+                'Produits avec stock bas récupérés avec succès',
+                ProductResources::collection($produit)
+            );
     }
 
     /**
@@ -296,7 +247,7 @@ class ProductController extends Controller
             ->with('category')
             ->limit(20)
             ->get();
-        
+
         return response()->json([
             'success' => true,
             'data' => $produit
@@ -311,14 +262,14 @@ class ProductController extends Controller
         $product = Produit::where('barcode', $barcode)
             ->with('category')
             ->first();
-        
+
         if (!$product) {
             return response()->json([
                 'success' => false,
                 'message' => 'Produit non trouvé'
             ], 404);
         }
-        
+
         return response()->json([
             'success' => true,
             'data' => $product
@@ -351,7 +302,7 @@ class ProductController extends Controller
             $imported = 0;
             foreach ($request->produit as $productData) {
                 $product = Produit::create($productData);
-                
+
                 // Mouvement de stock initial
                 if (isset($productData['stock_quantity'])) {
                     StockMouvement::create([
@@ -366,14 +317,14 @@ class ProductController extends Controller
                 }
                 $imported++;
             }
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => "{$imported} produits importés avec succès"
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([

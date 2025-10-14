@@ -92,20 +92,16 @@ class PayrollController extends Controller
         
         foreach ($employees as $employee) {
             $basicSalary = $employee->salary;
-            $allowances = $employee->transport_allowance + 
-                          $employee->housing_allowance + 
-                          $employee->meal_allowance;
             
             // Calculer les déductions (à personnaliser)
             $deductions = $this->calculateDeductions($employee, $period);
             
-            $netSalary = $basicSalary + $allowances - $deductions;
+            $netSalary = $basicSalary - $deductions;
             
             Payroll::create([
                 'employee_id' => $employee->id,
                 'period' => $period,
-                'basic_salary' => $basicSalary,
-                'allowances' => $allowances,
+                'gross_salary' => $basicSalary,
                 'deductions' => $deductions,
                 'net_salary' => $netSalary,
                 'payment_date' => $paymentDate,

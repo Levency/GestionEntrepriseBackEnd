@@ -13,7 +13,6 @@ class Payroll extends Model
         'period', // e.g., "2024-01" for January 2024
         'gross_salary',
         'net_salary',
-        'tax',
         'discount',
         'status',
     ];
