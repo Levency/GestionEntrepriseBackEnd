@@ -5,7 +5,9 @@ namespace App\Http\Controllers\api\personnel;
 use App\Models\Departement;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EmployeeResouce;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Resources\DepartementResouce;
 
 class DepartmentController extends Controller
 {
@@ -14,12 +16,12 @@ class DepartmentController extends Controller
      */
     public function index()
     {
-        $departments = Departement::all();
-        
-        return response()->json([
-            'success' => true,
-            'data' => $departments
-        ]);
+        $deparments = Departement::with('employees')->get();
+        return successResponse(
+            DepartementResouce::collection($deparments->load('employees')),
+            'Départements récupérés avec succès',
+            200
+        );
     }
 
     /**
@@ -37,13 +39,14 @@ class DepartmentController extends Controller
             //code...
             $department = Departement::create($request->all());
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Département créé avec succès',
-                'data' => $department
-            ], 201);
+            return successResponse(
+                'Département créé avec succès',
+                new DepartementResouce($department),
+                201
+            );
         } catch (\Throwable $th) {
             //throw $th;
+            return errorResponse('Erreur lors de la création du département', 500);
         }
 
     }
@@ -51,39 +54,23 @@ class DepartmentController extends Controller
     /**
      * Afficher un département
      */
-    public function show($id)
+    public function show(Departement $department)
     {
-        $department = Departement::find($id);
-        
-        if (!$department) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Département non trouvé'
-            ], 404);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'data' => $department
-        ]);
+       return successResponse(
+           new DepartementResouce($department),
+           'Département récupéré avec succès',
+           200
+       );
     }
 
     /**
      * Mettre à jour un département
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Departement $department)
     {
-        $department = Departement::find($id);
-        
-        if (!$department) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Département non trouvé'
-            ], 404);
-        }
         
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:departments,name,' . $id,
+            'name' => 'required|string|max:255|unique:departments,name,' . $department->id,
             'description' => 'nullable|string',
             'icon' => 'required|string'
         ]);
@@ -92,13 +79,13 @@ class DepartmentController extends Controller
             //code...
             $department->update($request->all());
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Département mis à jour avec succès',
-                'data' => $department
-            ]);
+            return successResponse(
+                'Département mis à jour avec succès',
+                new DepartementResouce($department)
+            );
         } catch (\Throwable $th) {
             //throw $th;
+            return errorResponse('Erreur lors de la mise à jour du département', 500);
         }
 
     }
@@ -106,52 +93,30 @@ class DepartmentController extends Controller
     /**
      * Supprimer un département
      */
-    public function destroy($id)
+    public function destroy(Departement $department)
     {
-        $department = Departement::find($id);
-        
-        if (!$department) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Département non trouvé'
-            ], 404);
+        try {
+            //code...
+            $department->delete();
+            return successResponse(
+                null,
+                'Département supprimé avec succès'
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la suppression du département', 500);
         }
-        
-        // if ($department->employees()->count() > 0) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Impossible de supprimer un département avec des employés'
-        //     ], 400);
-        // }
-        
-        $department->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Département supprimé avec succès'
-        ]);
     }
 
     /**
      * Employés d'un département
      */
-    public function employees($id)
+    public function employees(Departement $department)
     {
-        $department = Departement::find($id);
-        
-        if (!$department) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Département non trouvé'
-            ], 404);
-        }
-        
-        $employees = $department->employees()
-            ->get();
-        
-        return response()->json([
-            'success' => true,
-            'data' => $employees
-        ]);
+        return successResponse(
+            EmployeeResouce::collection($department->employees),
+            'Employés du département récupérés avec succès',
+            200
+        );
     }
 }

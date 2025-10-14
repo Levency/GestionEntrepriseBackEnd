@@ -41,10 +41,9 @@ class StockMovementController extends Controller
         
         $movements = $query->latest();
         
-        return response()->json([
-            'success' => true,
-            'data' => $movements
-        ]);
+        return successResponse(
+            $movements->paginate($perPage)
+        );
     }
 
     /**
@@ -58,20 +57,15 @@ class StockMovementController extends Controller
         try {
             //code...
             $movement = StockMouvement::create($data);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Mouvement de stock créé avec succès',
-                'data' => $movement
-            ], 201);
+            return successResponse(
+                $movement,
+                'Mouvement de stock créé avec succès',
+                201
+            );
 
         } catch (\Throwable $th) {
             //throw $th;
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création du mouvement de stock',
-                'error' => $th->getMessage()
-            ], 500);
+            return errorResponse('Erreur lors de la création du mouvement de stock', 500);
         }
     }
 
@@ -79,16 +73,8 @@ class StockMovementController extends Controller
      * Update the specified resource in storage.
      */
 
-    public function update(MovementRequest $request, $id)
+    public function update(MovementRequest $request, StockMouvement $movement)
     {
-        $movement = StockMouvement::find($id);
-        
-        if (!$movement) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Mouvement de stock non trouvé'
-            ], 404);
-        }
         
         $data = $request->validated();
         
@@ -96,47 +82,31 @@ class StockMovementController extends Controller
             //code...
             $movement->update($data);
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Mouvement de stock mis à jour avec succès',
-                'data' => $movement
-            ]);
+            return successResponse(
+                $movement,
+                'Mouvement de stock mis à jour avec succès'
+            );
         } catch (\Throwable $th) {
             //throw $th;
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour du mouvement de stock',
-                'error' => $th->getMessage()
-            ], 500);
+            return errorResponse('Erreur lors de la mise à jour du mouvement de stock', 500);
         }
     }
 
     /**
      * Supprimer un mouvement de stock
      */
-    public function destroy($id)
+    public function destroy(StockMouvement $movement)
     {
-        $movement = StockMouvement::find($id);
-        if (!$movement) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Mouvement de stock non trouvé'
-            ], 404);
-        }
         try {
             //code...
             $movement->delete();
-            return response()->json([
-                'success' => true,
-                'message' => 'Mouvement de stock supprimé avec succès'
-            ]);
+            return successResponse(
+                null,
+                'Mouvement de stock supprimé avec succès'
+            );
         } catch (\Throwable $th) {
             //throw $th;
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression du mouvement de stock',
-                'error' => $th->getMessage()
-            ], 500);
+            return errorResponse('Erreur lors de la suppression du mouvement de stock', 500);
         }
     }
 
@@ -150,10 +120,9 @@ class StockMovementController extends Controller
             ->latest()
             ->paginate(20);
         
-        return response()->json([
-            'success' => true,
-            'data' => $movements
-        ]);
+        return successResponse(
+            $movements
+        );
     }
 
     /**

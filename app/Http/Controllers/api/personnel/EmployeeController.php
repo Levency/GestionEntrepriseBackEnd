@@ -4,10 +4,12 @@ namespace App\Http\Controllers\api\personnel;
 
 use App\Models\User;
 use App\Models\Employee;
+use GrahamCampbell\ResultType\Success;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Resources\EmployeeResouce;
 use Illuminate\Support\Facades\Validator;
 
 class EmployeeController extends Controller
@@ -43,10 +45,10 @@ class EmployeeController extends Controller
         
         $employees = $query->latest()->paginate($perPage);
         
-        return response()->json([
-            'success' => true,
-            'data' => $employees
-        ]);
+        return successResponse(
+            'Employés récupérés avec succès',
+            EmployeeResouce::collection($employees)
+        );
     }
 
     /**
@@ -94,72 +96,40 @@ class EmployeeController extends Controller
             
             DB::commit();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Employé créé avec succès',
-                'data' => $employee->load( 'department')
-            ], 201);
+            return successResponse(
+                'Employé créé avec succès',
+                new EmployeeResouce($employee->load(['department'])),
+                201
+            );
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur lors de la création: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Afficher un employé
      */
-    public function show($id)
+    public function show(Employee $employee)
     {
-        $employee = Employee::with( 'department')->find($id);
         
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
-        
-        // Calculer les statistiques
-        $stats = [
-            'total_attendance' => $employee->attendances()->count(),
-            'present_days' => $employee->attendances()->where('status', 'present')->count(),
-            'absent_days' => $employee->attendances()->where('status', 'absent')->count(),
-            'late_days' => $employee->attendances()->where('status', 'late')->count(),
-            // 'total_leaves' => $employee->leaves()->count(),
-            // 'pending_leaves' => $employee->leaves()->where('status', 'pending')->count(),
-            // 'approved_leaves' => $employee->leaves()->where('status', 'approved')->count(),
-        ];
-        
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'employee' => $employee,
-                'stats' => $stats
-            ]
-        ]);
+        return SuccessResponse(
+            'Employé récupéré avec succès',
+            new EmployeeResouce($employee->load(['department']))
+        );
     }
 
     /**
      * Mettre à jour un employé
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Employee $employee)
     {
-        $employee = Employee::find($id);
-        
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
         
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $employee->user_id,
             'phone' => 'nullable|string',
             'position' => 'required|string',
             'department_id' => 'nullable|exists:departments,id',
@@ -182,35 +152,25 @@ class EmployeeController extends Controller
             
             DB::commit();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Employé mis à jour avec succès',
-                'data' => $employee->load(['user', 'department'])
-            ]);
+            return successResponse(
+                'Employé mis à jour avec succès',
+                new EmployeeResouce($employee->load(['department']))
+            );
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Supprimer un employé
      */
-    public function destroy($id)
+    public function destroy(Employee $employee)
     {
-        $employee = Employee::find($id);
-        
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
-        
         DB::beginTransaction();
         try {
             // $employee->user->delete();
@@ -218,109 +178,75 @@ class EmployeeController extends Controller
             
             DB::commit();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Employé supprimé avec succès'
-            ]);
+            return successResponse(
+                'Employé supprimé avec succès'
+            );
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage()
-            ], 500);
+            return errorResponse(
+                'Erreur: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Historique des présences
      */
-    public function attendanceHistory($id)
+    public function attendanceHistory(Employee $employee)
     {
-        $employee = Employee::find($id);
-        
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
-        
-        $attendances = $employee->attendances()
-            ->latest('created_at')
-            ->paginate(30);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $attendances
-        ]);
+        return successResponse(
+            'Historique des présences récupéré avec succès',
+            $employee->attendances()->latest()->paginate(12)
+        );
     }
 
     /**
      * Historique des paies
-     */
-    public function payrollHistory($id)
+     */ 
+    public function payrollHistory(Employee $employee)
     {
-        $employee = Employee::find($id);
         
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
-        
-        $payrolls = $employee->payrolls()
-            ->latest('payment_date')
-            ->paginate(12);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $payrolls
-        ]);
+        return successResponse(
+            'Historique des paies récupéré avec succès',
+            $employee->payrolls()->latest()->paginate(12)
+        );
     }
 
     /**
      * Activer un employé
      */
-    public function activate($id)
+    public function activate(Employee $employee)
     {
-        $employee = Employee::find($id);
-        
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
-        }
         
         $employee->update(['status' => 'Activate']);
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Employé activé avec succès'
-        ]);
+        return successResponse(
+            'Employé activé avec succès',
+            new EmployeeResouce($employee->load(['department'])),
+            200
+        );
     }
 
     /**
      * Désactiver un employé
      */
-    public function deactivate($id)
+    public function deactivate(Employee $employee)
     {
-        $employee = Employee::find($id);
+        try {
+            //code...
         
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé'
-            ], 404);
+            $employee->update(['status' => 'Deactivate']);
+            
+            return successResponse(
+                'Employé désactivé avec succès',
+                new EmployeeResouce($employee->load(['department'])),
+                200
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la désactivation de l\'employé', 500);
         }
-        
-        $employee->update(['status' => 'Deactivate']);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Employé désactivé avec succès'
-        ]);
     }
 }

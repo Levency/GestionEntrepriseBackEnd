@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\stock;
 
 use App\Http\Resources\CategoryResource;
+use App\Http\Resources\ProductResources;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -12,12 +13,9 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::all();
-        
-        return response()->json([
-            'success' => true,
-            'data' => CategoryResource::collection($categories)
-        ]);
+        return successResponse(
+            CategoryResource::collection(Category::all())
+        );
     }
 
     public function store(Request $request)
@@ -27,114 +25,71 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        try {
+            //code...
+            $category = Category::create($request->all());
+            return successResponse(
+                new CategoryResource($category),
+                'Catégorie créée avec succès',
+                201
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la création de la catégorie', 500);
         }
 
-        $category = Category::create($request->all());
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Catégorie créée avec succès',
-            'data' => $category
-        ], 201);
     }
 
-    public function show($id)
+    public function show(Category $category)
     {
-        $category = Category::find($id);
-        
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Catégorie non trouvée'
-            ], 404);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'data' => CategoryResource::collection($category)
-        ]);
+        return successResponse(
+            new CategoryResource($category)
+        );
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Category $category)
     {
-        $category = Category::find($id);
-        
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Catégorie non trouvée'
-            ], 404);
-        }
-        
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:categories,name,' . $id,
+            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'description' => 'nullable|string',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        try {
+            //code...
+            $category->update($request->all());
+            return successResponse(
+                new CategoryResource($category),
+                'Catégorie mise à jour avec succès'
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la mise à jour de la catégorie', 500);
         }
-
-        $category->update($request->all());
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Catégorie mise à jour avec succès',
-            'data' => $category
-        ]);
     }
 
-    public function destroy($id)
+    public function destroy(Category $category)
     {
-        $category = Category::find($id);
-        
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Catégorie non trouvée'
-            ], 404);
-        }
-        
-        if ($category->products()->count() > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer: des produits sont associés à cette catégorie'
-            ], 400);
-        }
-        
-        $category->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Catégorie supprimée avec succès'
-        ]);
+      try {
+            //code...
+            $category->delete();
+            //throw $th;
+            return successResponse(
+                null,
+                'Catégorie supprimée avec succès'
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la dissociation des produits de la catégorie', 500);
+        } 
     }
 
-    public function products($id)
+    public function products(Category $category)
     {
-        $category = Category::find($id);
-        
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Catégorie non trouvée'
-            ], 404);
-        }
         
         $products = $category->products()->paginate(15);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $products
-        ]);
+        return successResponse(
+            ProductResources::collection($products)
+        );
     }
 }
 

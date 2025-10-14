@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\personnel;
 
+use App\Http\Resources\PayrollResource;
 use App\Models\Payroll;
 use App\Models\Employee;
 use App\Models\Attendance;
@@ -20,7 +21,7 @@ class PayrollController extends Controller
         $status = $request->get('status');
         $period = $request->get('period');
         
-        $query = Payroll::with(['employee.user']);
+        $query = Payroll::with(['employee']);
         
         if ($status) {
             $query->where('status', $status);
@@ -30,32 +31,25 @@ class PayrollController extends Controller
             $query->where('period', $period);
         }
         
-        $payrolls = $query->latest('payment_date')->paginate($perPage);
+        $payrolls = $query->latest('created_at')->paginate($perPage);
         
-        return response()->json([
-            'success' => true,
-            'data' => $payrolls
-        ]);
+        return successResponse(
+            'Paies récupérées avec succès',
+            PayrollResource::collection($payrolls->load('employee')),
+            200
+        );
     }
 
     /**
      * Afficher une paie
      */
-    public function show($id)
+    public function show(Payroll $payroll)
     {
-        $payroll = Payroll::with(['employee.user', 'employee.department'])->find($id);
-        
-        if (!$payroll) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Paie non trouvée'
-            ], 404);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'data' => $payroll
-        ]);
+        return successResponse(
+            new PayrollResource($payroll->load('employee')),
+            'Paie récupérée avec succès',
+            200
+        );
     }
 
     /**
@@ -65,56 +59,51 @@ class PayrollController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'period' => 'required|string', // Format: YYYY-MM
-            'payment_date' => 'required|date',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        try {
+            //code...
+            $period = $request->period;
+            
+            // Vérifier si les paies existent déjà
+            $existing = Payroll::where('period', $period)->exists();
+            if ($existing) {
+                return errorResponse('Les paies pour cette période ont déjà été générées', 400);
+            }
+            
+            $employees = Employee::all();
+            $generated = 0;
+            foreach ($employees as $employee) {
+                $basicSalary = $employee->salary;
+                
+                // Calculer les déductions (à personnaliser)
+                $deductions = $this->calculateDeductions($employee, $period);
+                
+                $netSalary = $basicSalary - $deductions;
+                
+                $payroll = Payroll::create([
+                    'employee_id' => $employee->id,
+                    'period' => $period,
+                    'gross_salary' => $basicSalary,
+                    'discount' => $deductions,
+                    'net_salary' => $netSalary,
+                    'status' => 'paid',
+                ]);
+                
+                $generated++;
+            }
+            
+            return successResponse(
+                'Paies générées avec succès pour la période ' . $period,
+                ['generated_count' => $generated],
+                new PayrollResource($payroll->load('employee')),
+                201
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de la génération des paies: ' . $th->getMessage(), 500);
         }
 
-        $period = $request->period;
-        $paymentDate = $request->payment_date;
-        
-        // Vérifier si les paies existent déjà
-        $existing = Payroll::where('period', $period)->exists();
-        if ($existing) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Les paies pour cette période existent déjà'
-            ], 400);
-        }
-        
-        $employees = Employee::with('user')->whereHas('user', fn($q) => $q->where('is_active', true))->get();
-        $generated = 0;
-        
-        foreach ($employees as $employee) {
-            $basicSalary = $employee->salary;
-            
-            // Calculer les déductions (à personnaliser)
-            $deductions = $this->calculateDeductions($employee, $period);
-            
-            $netSalary = $basicSalary - $deductions;
-            
-            Payroll::create([
-                'employee_id' => $employee->id,
-                'period' => $period,
-                'gross_salary' => $basicSalary,
-                'deductions' => $deductions,
-                'net_salary' => $netSalary,
-                'payment_date' => $paymentDate,
-                'status' => 'pending',
-            ]);
-            
-            $generated++;
-        }
-        
-        return response()->json([
-            'success' => true,
-            'message' => "{$generated} paies générées avec succès"
-        ], 201);
     }
 
     /**
@@ -195,7 +184,7 @@ class PayrollController extends Controller
         $endDate = date('Y-m-t', strtotime($startDate));
         
         $absences = Attendance::where('employee_id', $employee->id)
-            ->whereBetween('date', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'absent')
             ->count();
         

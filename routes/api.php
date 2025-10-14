@@ -29,12 +29,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Products
     Route::apiResource('products', ProductController::class);
-    // Route::get('produuts/index', [ProductController::class, 'index']);
-    // Route::post('products/store', [ProductController::class, 'store']);
-    // Route::post('products/{id}/show', [ProductController::class, 'show']);
-    // Route::post('products/{id}/update', [ProductController::class, 'update']);
-    // Route::delete('products/{id}/destroy', [ProductController::class, 'destroy']);
-
     Route::post('products/bulk-import', [ProductController::class, 'bulkImport']);
     Route::get('products/low-stock/alert', [ProductController::class, 'lowStockAlert']);
     Route::post('products/{product}/adjust-stock', [ProductController::class, 'adjustStock']);
@@ -43,30 +37,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     
     // Categories
     Route::apiResource('categories', CategoryController::class);
-    Route::post('categories/store', [CategoryController::class, 'store']);
-    Route::post('categories/{id}/update', [CategoryController::class, 'update']);
-    Route::post('categories/{id}/show', [CategoryController::class, 'show']);
-    Route::post('categories/{id}/destroy', [CategoryController::class, 'destroy']);
-
     Route::get('categories/{category}/products', [CategoryController::class, 'products']);
     
     // Stock Movements
     Route::get('stock-movements', [StockMovementController::class, 'index']);
-    Route::post('stock-movements/store', [StockMovementController::class, 'store']);
-    Route::post('stock-movemnts/{id}/update', [StockMovementController::class, 'update']);
-    Route::delete('stock-movements/{id}/destroy', [StockMovementController::class, 'destroy']);
     Route::get('stock-movements/product/{product}', [StockMovementController::class, 'byProduct']);
     Route::get('stock-movements/report', [StockMovementController::class, 'report']);
 
 
 // Sales
     Route::apiResource('sales', SalesController::class);
-    Route::get('sales', [SalesController::class, 'index']);
-    Route::post('sales/store', [SalesController::class, 'store']);
-    Route::get('sales/{sale}/show', [SalesController::class, 'show']);
-    Route::post('sales/{sale}/update', [SalesController::class, 'update']);
-    Route::delete('sales/{sale}/destroy', [SalesController::class, 'destroy']);
-
     Route::post('sales/{sale}/refund', [SalesController::class, 'refund']);
     Route::post('sales/{sale}/cancel', [SalesController::class, 'cancel']);
     Route::post('sales/{sale}/pending', [SalesController::class, 'pending']);
@@ -76,10 +56,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
     // Employees
     Route::apiResource('employees', EmployeeController::class);
-    Route::post('employees/store', [EmployeeController::class, 'store']);
-    Route::get('employees/{id}/show', [EmployeeController::class, 'show']);
-    Route::post('employees/{id}/update', [EmployeeController::class, 'update']);
-    Route::delete('employees/{id}/destroy', [EmployeeController::class, 'destroy']);
     Route::get('employees/{employee}/attendance-history', [EmployeeController::class, 'attendanceHistory']);
     Route::get('employees/{employee}/payroll-history', [EmployeeController::class, 'payrollHistory']);
     Route::post('employees/{employee}/activate', [EmployeeController::class, 'activate']);
@@ -87,17 +63,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     
     // Attendance
     Route::get('attendance', [AttendanceController::class, 'index']);
-    Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
-    Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
+    Route::post('attendance/{emplyee}/check-in', [AttendanceController::class, 'checkIn']);
+    Route::post('attendance/{employee}/check-out', [AttendanceController::class, 'checkOut']);
     Route::get('attendance/today', [AttendanceController::class, 'today']);
     Route::get('attendance/employee/{employee}', [AttendanceController::class, 'byEmployee']);
-    Route::post('attendance/mark-absent', [AttendanceController::class, 'markAbsent']);
+    Route::post('attendance/{employee}/mark-absent', [AttendanceController::class, 'markAbsent']);
     Route::get('attendance/summary', [AttendanceController::class, 'summary']);
     
     // Payroll
     Route::apiResource('payrolls', PayrollController::class);
-    Route::post('payrolls/store', [PayrollController::class, 'store']);
-    
     Route::post('payrolls/generate', [PayrollController::class, 'generate']);
     Route::post('payrolls/{payroll}/pay', [PayrollController::class, 'markAsPaid']);
     Route::get('payrolls/period/{period}', [PayrollController::class, 'byPeriod']);
@@ -106,10 +80,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     
     // Departments
     Route::apiResource('departments', DepartmentController::class);
-    Route::post('departments/store', [DepartmentController::class, 'store']);
-    Route::post('departments/{id}/update', [DepartmentController::class, 'update']);
-    Route::get('departments/{id}/show', [DepartmentController::class, 'show']);
-    Route::delete('departments/{id}/destroy', [DepartmentController::class, 'destroy']);
     Route::get('departments/{department}/employees', [DepartmentController::class, 'employees']);
 
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\personnel;
 
+use App\Http\Resources\AttendanceResouce;
 use App\Models\Employee;
 use App\Models\Attendance;
 use Illuminate\Http\Request;
@@ -16,121 +17,104 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $perPage = $request->get('per_page', 15);
-        $date = $request->get('date');
+        $date = $request->get('created_at');
         $status = $request->get('status');
-        
-        $query = Attendance::with(['employee.user']);
-        
+
+        $query = Attendance::with(['employee']);
+
         if ($date) {
-            $query->whereDate('date', $date);
+            $query->whereDate('created_at', $date);
         }
-        
+
         if ($status) {
             $query->where('status', $status);
         }
-        
-        $attendances = $query->latest('date')->paginate($perPage);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $attendances
-        ]);
+
+        $attendances = $query->latest('created_at')->paginate($perPage);
+
+        return successResponse(
+            AttendanceResouce::collection($attendances->load('employee')),
+            'Présences récupérées avec succès',
+            200
+        );
     }
 
     /**
      * Check-in
      */
-    public function checkIn(Request $request)
+    public function checkIn($employee)
     {
-        $validator = Validator::make($request->all(), [
-            'employee_id' => 'required|exists:employees,id',
-            'check_in_time' => 'nullable|date_format:H:i',
-        ]);
+        try {
+            //code...
+            $today = now()->format('Y-m-d');
+            $checkInTime = now()->format('H:i');
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+            $existingAttendance = Attendance::where('employee_id', $employee)
+                ->whereDate('created_at', $today)
+                ->first();
 
-        $today = now()->format('Y-m-d');
-        $checkInTime = $request->check_in_time ?? now()->format('H:i');
-        
-        // Vérifier si déjà enregistré aujourd'hui
-        $existing = Attendance::where('employee_id', $request->employee_id)
-            ->whereDate('date', $today)
-            ->first();
-        
-        if ($existing) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Présence déjà enregistrée aujourd\'hui'
-            ], 400);
+            if ($existingAttendance) {
+                return errorResponse('Check-in déjà enregistré pour aujourd\'hui', 400);
+            }
+
+            $attendance = Attendance::create([
+                'employee_id' => $employee,
+                'check_in' => $checkInTime,
+                'status' => 'present',
+            ]);
+            return successResponse(
+                'Check-in enregistré avec succès',
+                new AttendanceResouce($attendance->load('employee')),
+                201
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de l\'enregistrement du check-in', 500);
         }
-        
-        // Déterminer si en retard (après 8h30)
-        $status = $checkInTime > '08:30' ? 'late' : 'present';
-        
-        $attendance = Attendance::create([
-            'employee_id' => $request->employee_id,
-            'date' => $today,
-            'check_in' => $checkInTime,
-            'status' => $status,
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Check-in enregistré avec succès',
-            'data' => $attendance->load('employee.user')
-        ], 201);
     }
 
     /**
      * Check-out
      */
-    public function checkOut(Request $request)
+    public function checkOut($employee)
     {
-        $validator = Validator::make($request->all(), [
-            'employee_id' => 'required|exists:employees,id',
-            'check_out_time' => 'nullable|date_format:H:i',
-        ]);
+        try {
+            //code...
+            $today = now()->format('Y-m-d');
+            $checkOutTime = $request->check_out_time ?? now()->format('H:i');
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+            $attendance = Attendance::where('employee_id', $employee)
+                ->whereDate('created_at', $today)
+                ->first();
 
-        $today = now()->format('Y-m-d');
-        $checkOutTime = $request->check_out_time ?? now()->format('H:i');
-        
-        $attendance = Attendance::where('employee_id', $request->employee_id)
-            ->whereDate('date', $today)
-            ->first();
-        
-        if (!$attendance) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun check-in trouvé aujourd\'hui'
-            ], 404);
+            if (!$attendance) {
+                $attendance->update(['check_out' => $checkOutTime]);
+                return successResponse(
+                    'Check-out modifié avec succès',
+                    new AttendanceResouce($attendance->load('employee')),
+                    200
+                );
+            }
+
+            if ($attendance->check_out) {
+                return errorResponse('Check-out déjà enregistré', 400);
+            }
+
+            $attendance = Attendance::create([
+                'employee_id' => $employee,
+                'check_in' => $checkOutTime,
+                'status' => 'absent',
+            ]);
+
+            return successResponse(
+                'Check-out enregistré avec succès',
+                new AttendanceResouce($attendance->load('employee')),
+                200
+            );
+        } catch (\Throwable $th) {
+            //throw $th;
+            return errorResponse('Erreur lors de l\'enregistrement du check-out', 500);
         }
-        
-        if ($attendance->check_out) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Check-out déjà enregistré'
-            ], 400);
-        }
-        
-        $attendance->update(['check_out' => $checkOutTime]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Check-out enregistré avec succès',
-            'data' => $attendance->load('employee.user')
-        ]);
     }
 
     /**
@@ -139,17 +123,17 @@ class AttendanceController extends Controller
     public function today()
     {
         $today = now()->format('Y-m-d');
-        
-        $attendances = Attendance::with(['employee.user'])
+
+        $attendances = Attendance::with(['employee'])
             ->whereDate('date', $today)
             ->get();
-        
+
         $allEmployees = Employee::with('user')->whereHas('user', fn($q) => $q->where('is_active', true))->get();
-        
+
         $present = $attendances->whereIn('status', ['present', 'late'])->count();
         $late = $attendances->where('status', 'late')->count();
         $absent = $allEmployees->count() - $present;
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -173,12 +157,12 @@ class AttendanceController extends Controller
         $month = $request->get('month', now()->format('Y-m'));
         $startDate = $month . '-01';
         $endDate = date('Y-m-t', strtotime($startDate));
-        
+
         $attendances = Attendance::where('employee_id', $employeeId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date', 'desc')
             ->get();
-        
+
         $summary = [
             'total_days' => $attendances->count(),
             'present' => $attendances->where('status', 'present')->count(),
@@ -186,7 +170,7 @@ class AttendanceController extends Controller
             'absent' => $attendances->where('status', 'absent')->count(),
             'leave' => $attendances->where('status', 'leave')->count(),
         ];
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -221,7 +205,7 @@ class AttendanceController extends Controller
             'status' => 'absent',
             'notes' => $request->notes,
         ]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Absence enregistrée',
@@ -237,11 +221,11 @@ class AttendanceController extends Controller
         $month = $request->get('month', now()->format('Y-m'));
         $startDate = $month . '-01';
         $endDate = date('Y-m-t', strtotime($startDate));
-        
+
         $attendances = Attendance::whereBetween('date', [$startDate, $endDate])->get();
         $totalEmployees = Employee::whereHas('user', fn($q) => $q->where('is_active', true))->count();
         $workingDays = $this->getWorkingDays($startDate, $endDate);
-        
+
         $summary = [
             'period' => $month,
             'working_days' => $workingDays,
@@ -251,7 +235,7 @@ class AttendanceController extends Controller
             'total_absent' => $attendances->where('status', 'absent')->count(),
             'average_attendance' => $workingDays > 0 ? ($attendances->whereIn('status', ['present', 'late'])->count() / ($totalEmployees * $workingDays)) * 100 : 0,
         ];
-        
+
         return response()->json([
             'success' => true,
             'data' => $summary
@@ -266,7 +250,7 @@ class AttendanceController extends Controller
         $start = new \DateTime($startDate);
         $end = new \DateTime($endDate);
         $days = 0;
-        
+
         while ($start <= $end) {
             $dayOfWeek = $start->format('N');
             if ($dayOfWeek < 6) { // Lundi à Vendredi
@@ -274,7 +258,7 @@ class AttendanceController extends Controller
             }
             $start->modify('+1 day');
         }
-        
+
         return $days;
     }
 }
