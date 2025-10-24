@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
+use App\Http\Resources\DepartementResouce;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class EmployeeResouce extends JsonResource
@@ -22,7 +23,7 @@ class EmployeeResouce extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'position' => $this->position,
-            'department' => new DepartementResouce($this->whenLoaded('department')),
+            'department' => $this->department,
             'statistics' => [
                 'attendances_count' => $this->attendances()->count(),
                 'present_days_count' => $this->attendances()->where('status', 'present')->count(),

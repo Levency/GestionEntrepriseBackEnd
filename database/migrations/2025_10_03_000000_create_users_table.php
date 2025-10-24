@@ -14,14 +14,20 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('user_name');
-            $table->string('email')->unique();
-            $table->string('password');
-            $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
+            $table->string('password'); 
+            $table->string('employee_code', 50)->unique();
             $table->enum('role', ['admin', 'manager', 'cashier', 'employee'])->default('employee');
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
+
+            
+        $table->foreign('employee_code')
+            ->references('employee_code')
+            ->on('employees')
+            ->onUpdate('cascade')
+            ->onDelete('cascade');
         });
     }
 

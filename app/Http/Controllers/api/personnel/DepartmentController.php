@@ -16,7 +16,7 @@ class DepartmentController extends Controller
      */
     public function index()
     {
-        $deparments = Departement::with('employees')->get();
+        $deparments = Departement::all();
         return successResponse(
             DepartementResouce::collection($deparments->load('employees')),
             'Départements récupérés avec succès',
@@ -35,9 +35,14 @@ class DepartmentController extends Controller
             'icon' => 'required|string'
         ]);
 
+
         try {
             //code...
-            $department = Departement::create($request->all());
+            $department = Departement::create([
+                'name' => $request->name,
+                'description' => $request->description,
+                'icon' => $request->icon
+            ]);
             
             return successResponse(
                 'Département créé avec succès',

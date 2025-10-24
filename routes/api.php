@@ -2,15 +2,24 @@
 
 use App\Models\Departement;
 use Illuminate\Http\Request;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\api\auth\AuthController;
+use App\Http\Controllers\api\auth\LoginController;
+use App\Http\Controllers\api\taxes\TaxeController;
+use App\Http\Controllers\api\access\RoleController;
 use App\Http\Controllers\api\sales\SalesController;
+use App\Http\Controllers\api\auth\RegisterController;
 use App\Http\Controllers\api\stock\ProductController;
 use App\Http\Controllers\api\stock\CategoryController;
+use App\Http\Controllers\api\access\UserRoleController;
+use App\Http\Controllers\api\access\PermissionController;
 use App\Http\Controllers\api\personnel\PayrollController;
 use App\Http\Controllers\api\personnel\EmployeeController;
 use App\Http\Controllers\api\stock\StockMovementController;
 use App\Http\Controllers\api\personnel\AttendanceController;
 use App\Http\Controllers\api\personnel\DepartmentController;
+use App\Http\Controllers\api\access\RolePermissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,9 +32,27 @@ use App\Http\Controllers\api\personnel\DepartmentController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+
+// Auth user
+    // Route::post('user/register', [RegisterController::class, 'register']);
+    // Route::post('user/login', [LoginController::class, 'login']);
+    // Route::post('user/forgot-password', [\App\Http\Controllers\api\auth\FogetPassword::class, 'sendResetLinkEmail']);
+
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('logout', [AuthController::class, 'logout']);
+
+// users
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::delete('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'deleteUser']);
+    Route::put('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'updateUser']);
+    Route::get('users', [\App\Http\Controllers\api\auth\UserController::class, 'getAllUsers']);
+    Route::get('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'getUser']);
+    Route::get('users/{user}/show', [\App\Http\Controllers\api\auth\UserController::class, 'showUser']);
 
 // Products
     Route::apiResource('products', ProductController::class);
@@ -80,7 +107,32 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     
     // Departments
     Route::apiResource('departments', DepartmentController::class);
+    Route::post('departments/store', [DepartmentController::class, 'store']);
     Route::get('departments/{department}/employees', [DepartmentController::class, 'employees']);
+
+     // Taxes
+    Route::apiResource('taxes', TaxeController::class);
+    Route::put('taxes/{tax}/activate', [TaxeController::class, 'activate']);
+    Route::put('taxes/{tax}/deactivate', [TaxeController::class, 'deactivate']);
+
+     // 🔹 Gestion des rôles
+    Route::apiResource('roles', RoleController::class);
+
+    // 🔹 Gestion des permissions
+    Route::apiResource('permissions', PermissionController::class);
+
+    // 🔹 Attribution de rôles et permissions aux utilisateurs
+    Route::post('users/{user}/assign-role', [UserRoleController::class, 'assignRole']);
+    Route::post('users/{user}/remove-role', [UserRoleController::class, 'removeRole']);
+    Route::post('users/{user}/give-permission', [UserRoleController::class, 'givePermission']);
+    Route::post('users/{user}/revoke-permission', [UserRoleController::class, 'revokePermission']);
+
+    //
+    Route::post('roles/{role}/give-permissions', [RolePermissionController::class, 'givePermissions']);
+    Route::post('roles/{role}/revoke-permissions', [RolePermissionController::class, 'revokePermissions']);
+
+
+});
 
 
     

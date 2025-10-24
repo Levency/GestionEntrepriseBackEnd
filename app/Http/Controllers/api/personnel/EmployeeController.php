@@ -19,6 +19,9 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
+        if (!auth()->user()->can('view employee')) {
+            return errorResponse('Vous n\'avez pas la permission de voir les employés', 403);
+        }
         $perPage = $request->get('per_page', 15);
         $department = $request->get('department_id');
         $status = $request->get('status');
@@ -56,6 +59,9 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
+        if (!auth()->user()->can('create employee')) {
+            return errorResponse('Vous n\'avez pas la permission de créer des employés', 403);
+        }
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255|min:3',
             'last_name' => 'required|string|max:255|min:3',
@@ -70,15 +76,6 @@ class EmployeeController extends Controller
 
         DB::beginTransaction();
         try {
-            // Créer l'utilisateur
-            // $user = User::create([
-            //     'name' => $request->name,
-            //     'email' => $request->email,
-            //     'phone' => $request->phone,
-            //     'password' => Hash::make($request->password),
-            //     'role' => $request->role,
-            //     'is_active' => true,
-            // ]);
             
             // Créer l'employé
             $employee = Employee::create([
@@ -116,6 +113,9 @@ class EmployeeController extends Controller
      */
     public function show(Employee $employee)
     {
+        if (!auth()->user()->can('view employee')) {
+            return errorResponse('Vous n\'avez pas la permission de voir les employés', 403);
+        }
         
         return SuccessResponse(
             'Employé récupéré avec succès',
@@ -128,6 +128,9 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, Employee $employee)
     {
+        if (!auth()->user()->can('update employee')) {
+            return errorResponse('Vous n\'avez pas la permission de modifier des employés', 403);
+        }
         
         $validator = Validator::make($request->all(), [
             'phone' => 'nullable|string',
@@ -171,6 +174,9 @@ class EmployeeController extends Controller
      */
     public function destroy(Employee $employee)
     {
+        if (!auth()->user()->can('destroy employee')) {
+            return errorResponse('Vous n\'avez pas la permission de supprimer des employés', 403);
+        }
         DB::beginTransaction();
         try {
             // $employee->user->delete();
@@ -196,6 +202,9 @@ class EmployeeController extends Controller
      */
     public function attendanceHistory(Employee $employee)
     {
+        if (!auth()->user()->can('view employee')) {
+            return errorResponse('Vous n\'avez pas la permission de voir les présences', 403);
+        }
         return successResponse(
             'Historique des présences récupéré avec succès',
             $employee->attendances()->latest()->paginate(12)
@@ -207,7 +216,9 @@ class EmployeeController extends Controller
      */ 
     public function payrollHistory(Employee $employee)
     {
-        
+        if (!auth()->user()->can('view employee')) {
+            return errorResponse('Vous n\'avez pas la permission de voir les paies', 403);
+        }   
         return successResponse(
             'Historique des paies récupéré avec succès',
             $employee->payrolls()->latest()->paginate(12)
@@ -219,7 +230,9 @@ class EmployeeController extends Controller
      */
     public function activate(Employee $employee)
     {
-        
+        if (!auth()->user()->can('activate employee')) {
+            return errorResponse('Vous n\'avez pas la permission d\'activer des employés', 403);
+        }
         $employee->update(['status' => 'Activate']);
         
         return successResponse(
@@ -234,6 +247,9 @@ class EmployeeController extends Controller
      */
     public function deactivate(Employee $employee)
     {
+        if (!auth()->user()->can('deactivate employee')) {
+            return errorResponse('Vous n\'avez pas la permission de désactiver des employés', 403);
+        }
         try {
             //code...
         

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Observers\ProductObservers;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,5 +47,10 @@ class Produit extends Model
             return 'low_stock';
         }
         return 'in_stock';
+    }
+
+    public function boot()
+    {
+        Produit::observe(ProductObservers::class);
     }
 }

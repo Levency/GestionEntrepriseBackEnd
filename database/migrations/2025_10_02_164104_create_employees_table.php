@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('first_name');
             $table->string('last_name');
             $table->string('position');
-            $table->string('department')->nullable();
+            $table->foreignId('department_id')->constrained('departements');
             $table->string('email')->unique()->nullable();
             $table->string('phone')->nullable();
             $table->decimal('salary', 10, 2);
