@@ -1,27 +1,26 @@
 <?php
 
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-function successResponse($message,  $data = [], $statusCode = 200)
-{
-    $messages = [
-        'success' => true,
-        'message' => $message,
-        'data' => $data,
-        'code' => $statusCode
-    ];
-    if ($data instanceof AnonymousResourceCollection) {
-        unset($messages['data']);
-        return $data->additional($messages);
+if (!function_exists('successResponse')) {
+    function successResponse($data = null, $status = 200, $message = 'Success')
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'status' => $status,
+            'data' => $data,
+        ], $status);
     }
-    return response()->json($messages, $statusCode);
 }
 
-function errorResponse($message, $statusCode)
-{
-    return response()->json([
-        'success' => false,
-        'error' => $message,
-        'code' => $statusCode
-    ], $statusCode);
+if (!function_exists('errorResponse')) {
+    function errorResponse($message = 'Error', $status = 400, $errors = null)
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'status' => $status,
+            'errors' => $errors,
+        ], $status);
+    }
 }

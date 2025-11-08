@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Response;
 
 class AuthController extends Controller
 {
@@ -20,17 +21,24 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'user_name' => 'required|string|max:255',
             'employee_code' => 'required|string|exists:employees,employee_code|unique:users,employee_code',
-            'password' => 'required|string|min:8|confirmed|max:255',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // try {
-            //code...
-            $validator->validate();
+        // if ($validator->fails()) {
+        //     return errorResponse('Erreur de validation', 422, $validator->errors());
+        // }
+
+        try {
             $employee = Employee::where('employee_code', $request->employee_code)->first();
+
             if (!$employee) {
-                return response()->json(['message' => 'Code employé introuvable.'], 404);
+                return response()->json([
+                'success' => false,
+                'message' => 'Employé non trouvé.',
+                'status' => 404
+            ]);
             }
-    
+
             $user = User::create([
                 'user_name' => $request->user_name,
                 'employee_code' => $request->employee_code,
@@ -38,22 +46,27 @@ class AuthController extends Controller
                 'role' => 'employee',
                 'is_active' => true,
             ]);
-    
+
             $token = $user->createToken('auth_token')->plainTextToken;
-            dd($user);  
-    
-            return successResponse(
-                [
-                    'user' => UserResource::make($user->load('employee')),
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compte utilisateur créé avec succès.',
+                'status' => 201,
+                'data' => [
+                    'user' => new UserResource($user),
                     'token' => $token,
                 ],
-                null,
-                'Utilisateur créé avec succès.'
-            );
-        // } catch (\Illuminate\Validation\ValidationException $e) {
-        //     return errorResponse('Validation error', 422);
-        // }
-        // Vérifie si l'employé existe bien
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'erreuur serveur',
+                'status' => 500
+            ]);
+                
+        }
     }
 
     /**
@@ -69,16 +82,24 @@ class AuthController extends Controller
         $user = User::where('employee_code', $request->employee_code)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Code employé ou mot de passe incorrect.'], 401);
+            return response()->json([
+                'success' => false,
+                'message' => 'Code employé ou mot de passe incorrect.',
+                'status' => 201,
+            ], 201);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Connexion réussie.',
-            'user' => $user->load(['employee', 'roles.permissions']),
-            'token' => $token,
-        ]);
+                'success' => true,
+                'message' => 'Compte utilisateur connecter avec success.',
+                'status' => 201,
+                'data' => [
+                    'user' => new UserResource($user),
+                    'token' => $token,
+                ],
+            ], 201);
     }
 
     /**
@@ -121,7 +142,7 @@ class AuthController extends Controller
         ]);
     }
 
-     /**
+    /**
      * Déconnexion de l'utilisateur (Logout)
      */
     public function logout(Request $request)

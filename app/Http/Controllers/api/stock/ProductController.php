@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers\api\stock;
 
-use App\Http\Requests\ProductRequest;
-use App\Http\Resources\ProductResources;
 use App\Models\Produit;
-use App\Models\StockMouvement;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Models\StockMovement;
+use App\Models\StockMouvement;
+use Ramsey\Uuid\Rfc4122\NilUuid;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ProductRequest;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Resources\ProductResources;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\api\stock\Product;
 
@@ -21,26 +23,16 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        $categoryId = $request->get('category_id');
-        $isActive = $request->get('is_active');
+        $products = Produit::with(['category', 'stockMouvements'])
+            ->paginate($request->get('per_page', 15));
 
-        $query = Produit::with(['category', 'stockMouvements']);
-
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
-        }
-
-        if ($isActive !== null) {
-            $query->where('is_active', $isActive);
-        }
-
-        $produit = $query->latest()->paginate($perPage);
-
-        return successResponse(
-            'Produits récupérés avec succès',
-            ProductResources::collection($produit)
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Produits récupérés avec succès',
+            'data' => ProductResources::collection($products),
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+        ]);
     }
 
     /**
@@ -48,8 +40,8 @@ class ProductController extends Controller
      */
     public function store(ProductRequest $request)
     {
-        $request->code = $request->code ?? 'PROD-' . strtoupper(uniqid());
-        $request->name = $request->name ?? 'Produit ' . date('YmdHis');
+        $request->code = $request->merge(['code' => $this->generateProductCode($request->category_id)]);
+        $request->name = $request->name ?? null;
         $request->category_id = $request->category_id ?? 1; // Catégorie par défaut
         $request->min_stock_level = $request->min_stock_level ?? 5;
         $request->stock_quantity = $request->stock_quantity ?? 0;
@@ -73,18 +65,37 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return successResponse(
-                'Produit créé avec succès',
-                new ProductResources($product)
-            );
-
+            return response()->json([
+                'success' => true,
+                'message' => 'Produit créé avec succès',
+                'data' => new ProductResources($product)
+            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return errorResponse(
-                'Erreur lors de la création: ' . $e->getMessage(),
-                500
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la création: ' . $e->getMessage()
+            ], 500);
         }
+    }
+
+    private function generateProductCode($categoryId)
+    {
+        // On peut ajouter un préfixe basé sur la catégorie
+        $category = Category::find($categoryId);
+        $prefix = $category ? strtoupper(substr($category->name, 0, 3)) : 'PRD';
+
+        // Année courante
+        $year = date('Y');
+
+        // Compter le nombre de produits déjà créés cette année
+        $count = Produit::whereYear('created_at', $year)->count() + 1;
+
+        // Générer un numéro formaté (ex: 0001, 0002, etc.)
+        $number = str_pad($count, 4, '0', STR_PAD_LEFT);
+
+        // Code final du type: CAT-2025-0001
+        return "{$prefix}-{$number}";
     }
 
     /**
@@ -92,7 +103,7 @@ class ProductController extends Controller
      */
     public function show(Produit $product)
     {
-        
+
 
         return successResponse(
             'Produit récupéré avec succès',
@@ -109,8 +120,8 @@ class ProductController extends Controller
     public function update(ProductRequest $request, Produit $product)
     {
         // $product = Produit::find($product);
-
-        $request->name = $request->name ?? 'Produit ' . date('YmdHis');
+        $request->code = $request->merge(['code' => $this->generateProductCode($request->category_id)]);
+        $request->name = $request->name ?? null;
         $request->category_id = $request->category_id ?? 1; // Catégorie par défaut
         $request->min_stock_level = $request->min_stock_level ?? 5;
         $request->stock_quantity = $request->stock_quantity ?? 0;
@@ -199,9 +210,7 @@ class ProductController extends Controller
             StockMouvement::create([
                 'produit_id' => $product->id,
                 'type' => $request->type,
-                'quantity' => abs($quantity),
-                'previous_stock' => $previousStock,
-                'new_stock' => $newStock,
+                'quantity' => $request->quantity,
                 'reason' => $request->reason
             ]);
 
@@ -230,10 +239,10 @@ class ProductController extends Controller
             ->with('category')
             ->get();
 
-            return successResponse(
-                'Produits avec stock bas récupérés avec succès',
-                ProductResources::collection($produit)
-            );
+        return successResponse(
+            'Produits avec stock bas récupérés avec succès',
+            ProductResources::collection($produit)
+        );
     }
 
     /**

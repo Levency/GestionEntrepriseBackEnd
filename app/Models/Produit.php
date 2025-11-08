@@ -31,7 +31,7 @@ class Produit extends Model
     }
     public function saleItems()
     {
-        return $this->belongsTo(SaleItem::class);
+        return $this->hasMany(SaleItem::class);
     }
 
     public function isLowStock()
@@ -49,8 +49,8 @@ class Produit extends Model
         return 'in_stock';
     }
 
-    public function boot()
-    {
-        Produit::observe(ProductObservers::class);
-    }
+    // public function boot()
+    // {
+    //     Produit::observe(ProductObservers::class);
+    // }
 }

@@ -14,7 +14,7 @@ class CategoryController extends Controller
     public function index()
     {
         return successResponse(
-            CategoryResource::collection(Category::all())
+            CategoryResource::collection(Category::all()->loadCount('products'))
         );
     }
 

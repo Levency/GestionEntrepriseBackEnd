@@ -18,7 +18,6 @@ class SalesController extends Controller
     {
         $perPage = $request->get('per_page', 15);
         $status = $request->get('status');
-        $endDate = $request->get('end_date');
         
         $query = Sale::with( 'saleItems');
         

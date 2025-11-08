@@ -16,9 +16,9 @@ class SaleItem extends Model
         'subtotal',
     ];
 
-    public function produits()
+    public function produit()
     {
-        return $this->hasMany(Produit::class);
+        return $this->belongsTo(Produit::class);
     }
 
     public function sales()

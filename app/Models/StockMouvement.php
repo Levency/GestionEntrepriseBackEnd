@@ -17,6 +17,6 @@ class StockMouvement extends Model
 
     public function product()
     {
-        return $this->belongsTo(Produit::class, 'product_id');
+        return $this->belongsTo(Produit::class, 'produit_id');
     }
 }

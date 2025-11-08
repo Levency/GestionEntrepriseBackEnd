@@ -67,10 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('categories/{category}/products', [CategoryController::class, 'products']);
     
     // Stock Movements
-    Route::get('stock-movements', [StockMovementController::class, 'index']);
-    Route::get('stock-movements/product/{product}', [StockMovementController::class, 'byProduct']);
+    Route::apiResource('stock-movements', StockMovementController::class);
+    Route::get('products/{product}/movements', [StockMovementController::class, 'byProduct']);
     Route::get('stock-movements/report', [StockMovementController::class, 'report']);
-
 
 // Sales
     Route::apiResource('sales', SalesController::class);
