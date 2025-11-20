@@ -17,11 +17,11 @@ class DepartmentController extends Controller
     public function index()
     {
         $deparments = Departement::all();
-        return successResponse(
-            DepartementResouce::collection($deparments->load('employees')),
-            'Départements récupérés avec succès',
-            200
-        );
+        return response()->json([
+            'status' => 'success',
+            'data' => $deparments,
+            'message' => 'Départements récupérés avec succès',
+        ], 200);
     }
 
     /**
@@ -44,14 +44,17 @@ class DepartmentController extends Controller
                 'icon' => $request->icon
             ]);
             
-            return successResponse(
-                'Département créé avec succès',
-                new DepartementResouce($department),
-                201
-            );
+            return response()->json([
+                'status' => 'success',
+                'data' => new DepartementResouce($department),
+                'message' => 'Département créé avec succès',
+            ], 201);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de la création du département', 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la création du département',
+            ], 500);
         }
 
     }
@@ -61,11 +64,11 @@ class DepartmentController extends Controller
      */
     public function show(Departement $department)
     {
-       return successResponse(
-           new DepartementResouce($department),
-           'Département récupéré avec succès',
-           200
-       );
+       return response()->json([
+            'status' => 'success',
+            'data' => new DepartementResouce($department),
+            'message' => 'Département récupéré avec succès',
+        ], 200);
     }
 
     /**
@@ -76,21 +79,24 @@ class DepartmentController extends Controller
         
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:departments,name,' . $department->id,
-            'description' => 'nullable|string',
-            'icon' => 'required|string'
+            'description' => 'nullable|string'
         ]);
 
         try {
             //code...
             $department->update($request->all());
             
-            return successResponse(
-                'Département mis à jour avec succès',
-                new DepartementResouce($department)
-            );
+            return response()->json([
+                'status' => 'success',
+                'data' => new DepartementResouce($department),
+                'message' => 'Département mis à jour avec succès',
+            ], 200);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de la mise à jour du département', 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la mise à jour du département',
+            ], 500);
         }
 
     }
@@ -103,13 +109,16 @@ class DepartmentController extends Controller
         try {
             //code...
             $department->delete();
-            return successResponse(
-                null,
-                'Département supprimé avec succès'
-            );
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Département supprimé avec succès',
+            ], 200);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de la suppression du département', 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la suppression du département',
+            ], 500);
         }
     }
 
@@ -118,10 +127,10 @@ class DepartmentController extends Controller
      */
     public function employees(Departement $department)
     {
-        return successResponse(
-            EmployeeResouce::collection($department->employees),
-            'Employés du département récupérés avec succès',
-            200
-        );
+        return response()->json([
+            'status' => 'success',
+            'data' => EmployeeResouce::collection($department->employees),
+            'message' => 'Employés du département récupérés avec succès',
+        ], 200);
     }
 }

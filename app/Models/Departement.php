@@ -11,8 +11,7 @@ class Departement extends Model
 
     protected $fillable = [
         'name',
-        'description',
-        'icon'
+        'description'
     ];
 
     public function employees()

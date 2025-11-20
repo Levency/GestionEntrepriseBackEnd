@@ -33,11 +33,11 @@ class PayrollController extends Controller
         
         $payrolls = $query->latest('created_at')->paginate($perPage);
         
-        return successResponse(
-            'Paies récupérées avec succès',
-            PayrollResource::collection($payrolls->load('employee')),
-            200
-        );
+        return response()->json([
+            'status' => "success",
+            'message' => 'Payroll list',
+            'data' => PayrollResource::collection($payrolls)
+        ]);
     }
 
     /**
@@ -45,11 +45,11 @@ class PayrollController extends Controller
      */
     public function show(Payroll $payroll)
     {
-        return successResponse(
-            new PayrollResource($payroll->load('employee')),
-            'Paie récupérée avec succès',
-            200
-        );
+        return response()->json([
+            'status' => "success",
+            'message' => 'Payroll retrieved successfully',
+            'data' => new PayrollResource($payroll->load('employee'))
+        ]);
     }
 
     /**
@@ -93,21 +93,28 @@ class PayrollController extends Controller
                 $generated++;
             }
             
-            return successResponse(
-                'Paies générées avec succès pour la période ' . $period,
-                ['generated_count' => $generated],
-                new PayrollResource($payroll->load('employee')),
-                201
-            );
+            return response()->json([
+                'success' => true,
+                'message' => "$generated paies générées pour la période $period",
+            ]);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de la génération des paies: ' . $th->getMessage(), 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération des paies: ' . $th->getMessage(),
+            ], 500);
         }
 
     }
 
     /**
      * Marquer comme payé
+     */
+
+    /**
+     * Summary of markAsPaid
+     * @param mixed $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function markAsPaid($id)
     {

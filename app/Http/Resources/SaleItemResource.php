@@ -16,7 +16,7 @@ class SaleItemResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'product_name' => $this->produit->name,
+            'product_name' => $this->getProductNameAttribute(),
             // 'Products' => ProductResources::collection($this->whenLoaded($this->produits)),
             'quantity' => $this->quantity,
             'unit_price' => $this->unit_price,

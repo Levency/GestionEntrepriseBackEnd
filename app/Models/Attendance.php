@@ -21,6 +21,21 @@ class Attendance extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function isAbsent()
+    {
+        return $this->status === 'absent';
+    }
+
+    public function isPresent()
+    {
+        return $this->status === 'present';
+    }
+
+    public function isLate()
+    {
+        return $this->status === 'late';
+    }
+
     // Additional methods or relationships can be added here
     
 }

@@ -88,11 +88,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('employees/{employee}/deactivate', [EmployeeController::class, 'deactivate']);
     
     // Attendance
-    Route::get('attendance', [AttendanceController::class, 'index']);
-    Route::post('attendance/{emplyee}/check-in', [AttendanceController::class, 'checkIn']);
-    Route::post('attendance/{employee}/check-out', [AttendanceController::class, 'checkOut']);
-    Route::get('attendance/today', [AttendanceController::class, 'today']);
-    Route::get('attendance/employee/{employee}', [AttendanceController::class, 'byEmployee']);
+    Route::get('attendances', [AttendanceController::class, 'index']);
+    Route::post('attendances/{emplyee}/check-in', [AttendanceController::class, 'checkIn']);
+    Route::post('attendances/{employee}/check-out', [AttendanceController::class, 'checkOut']);
+    Route::get('attendances/today', [AttendanceController::class, 'today']);
+    Route::post('pointed', [AttendanceController::class, 'markAllPresent']);
+    Route::get('attendances/employee/{employee}', [AttendanceController::class, 'byEmployee']);
     Route::post('attendance/{employee}/mark-absent', [AttendanceController::class, 'markAbsent']);
     Route::get('attendance/summary', [AttendanceController::class, 'summary']);
     

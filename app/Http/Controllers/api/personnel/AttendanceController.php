@@ -16,29 +16,31 @@ class AttendanceController extends Controller
      */
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        $date = $request->get('created_at');
+        $perPage = $request->get('per_page', 50);
+        $date = $request->get('date');
         $status = $request->get('status');
 
         $query = Attendance::with(['employee']);
 
+        // Filtrer par date
         if ($date) {
             $query->whereDate('created_at', $date);
         }
 
+        // Filtrer par statut
         if ($status) {
             $query->where('status', $status);
         }
 
-        $attendances = $query->latest('created_at')->paginate($perPage);
+        $attendances = $query->orderBy('created_at', 'desc')
+            ->paginate($perPage);
 
-        return successResponse(
-            AttendanceResouce::collection($attendances->load('employee')),
-            'Présences récupérées avec succès',
-            200
-        );
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Présences récupérées avec succès',
+            'data' => AttendanceResouce::collection($attendances),
+        ]);
     }
-
     /**
      * Check-in
      */
@@ -54,7 +56,10 @@ class AttendanceController extends Controller
                 ->first();
 
             if ($existingAttendance) {
-                return errorResponse('Check-in déjà enregistré pour aujourd\'hui', 400);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Check-in déjà enregistré pour aujourd\'hui',
+                ], 400);
             }
 
             $attendance = Attendance::create([
@@ -62,14 +67,17 @@ class AttendanceController extends Controller
                 'check_in' => $checkInTime,
                 'status' => 'present',
             ]);
-            return successResponse(
-                'Check-in enregistré avec succès',
-                new AttendanceResouce($attendance->load('employee')),
-                201
-            );
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Check-in enregistré avec succès',
+                'data' => new AttendanceResouce($attendance->load('employee')),
+            ], 201);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de l\'enregistrement du check-in', 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de l\'enregistrement du check-in',
+            ], 500);
         }
     }
 
@@ -78,43 +86,35 @@ class AttendanceController extends Controller
      */
     public function checkOut($employee)
     {
-        try {
-            //code...
-            $today = now()->format('Y-m-d');
-            $checkOutTime = $request->check_out_time ?? now()->format('H:i');
+        $today = now()->format('Y-m-d');
+        $checkOutTime = now()->format('H:i');
 
-            $attendance = Attendance::where('employee_id', $employee)
-                ->whereDate('created_at', $today)
-                ->first();
+        $attendance = Attendance::where('employee_id', $employee)
+            ->whereDate('created_at', $today)
+            ->first();
 
-            if (!$attendance) {
-                $attendance->update(['check_out' => $checkOutTime]);
-                return successResponse(
-                    'Check-out modifié avec succès',
-                    new AttendanceResouce($attendance->load('employee')),
-                    200
-                );
-            }
-
-            if ($attendance->check_out) {
-                return errorResponse('Check-out déjà enregistré', 400);
-            }
-
-            $attendance = Attendance::create([
-                'employee_id' => $employee,
-                'check_in' => $checkOutTime,
-                'status' => 'absent',
-            ]);
-
-            return successResponse(
-                'Check-out enregistré avec succès',
-                new AttendanceResouce($attendance->load('employee')),
-                200
-            );
-        } catch (\Throwable $th) {
-            //throw $th;
-            return errorResponse('Erreur lors de l\'enregistrement du check-out', 500);
+        if (!$attendance) {  // ✅ Si N'EXISTE PAS
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Aucun check-in enregistré pour aujourd\'hui',
+            ], 400);
         }
+
+        if ($attendance->check_out) {  // ✅ Si check_out déjà fait
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Check-out déjà enregistré pour aujourd\'hui',
+            ], 400);
+        }
+
+        // ✅ UPDATE l'enregistrement existant
+        $attendance->update(['check_out' => $checkOutTime]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Check-out enregistré avec succès',
+            'data' => new AttendanceResouce($attendance->load('employee')),
+        ], 200);
     }
 
     /**
@@ -125,17 +125,17 @@ class AttendanceController extends Controller
         $today = now()->format('Y-m-d');
 
         $attendances = Attendance::with(['employee'])
-            ->whereDate('date', $today)
+            ->whereDate('created_at', $today)
             ->get();
 
-        $allEmployees = Employee::with('user')->whereHas('user', fn($q) => $q->where('is_active', true))->get();
+        $allEmployees = Employee::where('status', 'active')->get();
 
         $present = $attendances->whereIn('status', ['present', 'late'])->count();
         $late = $attendances->where('status', 'late')->count();
         $absent = $allEmployees->count() - $present;
 
         return response()->json([
-            'success' => true,
+            'status' => 'success',
             'data' => [
                 'date' => $today,
                 'summary' => [
@@ -150,6 +150,32 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Pointer tout
+     */
+    public function markAllPresent(Request $request)
+    {
+        $today = now()->format('Y-m-d');
+        $allEmployees = Employee::where('status', 'active')->get();
+        foreach ($allEmployees as $employee) {
+            $existingAttendance = Attendance::where('employee_id', $employee->id)
+                ->whereDate('created_at', $today)
+                ->first();
+
+            if (!$existingAttendance) {
+                Attendance::create([
+                    'employee_id' => $employee->id,
+                    'check_in' => '09:00',
+                    'status' => 'present',
+                ]);
+            }
+        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tous les employés ont été marqués comme présents pour aujourd\'hui',
+        ]);
+    }
+
+    /**
      * Présences par employé
      */
     public function byEmployee($employeeId, Request $request)
@@ -159,59 +185,19 @@ class AttendanceController extends Controller
         $endDate = date('Y-m-t', strtotime($startDate));
 
         $attendances = Attendance::where('employee_id', $employeeId)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->orderBy('date', 'desc')
+            ->whereBetween('created_at', [$startDate, $endDate])  // ✅ CORRECT
+            ->orderBy('created_at', 'desc')
             ->get();
-
-        $summary = [
-            'total_days' => $attendances->count(),
-            'present' => $attendances->where('status', 'present')->count(),
-            'late' => $attendances->where('status', 'late')->count(),
-            'absent' => $attendances->where('status', 'absent')->count(),
-            'leave' => $attendances->where('status', 'leave')->count(),
-        ];
 
         return response()->json([
             'success' => true,
             'data' => [
                 'period' => $month,
-                'summary' => $summary,
                 'attendances' => $attendances
             ]
         ]);
     }
 
-    /**
-     * Marquer absent
-     */
-    public function markAbsent(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'employee_id' => 'required|exists:employees,id',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $attendance = Attendance::create([
-            'employee_id' => $request->employee_id,
-            'date' => $request->date,
-            'status' => 'absent',
-            'notes' => $request->notes,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Absence enregistrée',
-            'data' => $attendance
-        ], 201);
-    }
 
     /**
      * Résumé des présences

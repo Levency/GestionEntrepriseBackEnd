@@ -19,39 +19,15 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
-        if (!auth()->user()->can('view employee')) {
-            return errorResponse('Vous n\'avez pas la permission de voir les employés', 403);
-        }
         $perPage = $request->get('per_page', 15);
-        $department = $request->get('department_id');
-        $status = $request->get('status');
-        $search = $request->get('search');
-        
-        $query = Employee::with( 'department');
-        
-        if ($department) {
-            $query->where('department_id', $department);
-        }
-        
-        // if ($status === 'active') {
-        //     $query->whereHas('user', fn($q) => $q->where('is_active', true));
-        // } elseif ($status === 'inactive') {
-        //     $query->whereHas('user', fn($q) => $q->where('is_active', false));
-        // }
-        
-        if ($search) {
-            $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhere('employee_id', 'like', "%{$search}%");
-        }
-        
-        $employees = $query->latest()->paginate($perPage);
-        
-        return successResponse(
-            'Employés récupérés avec succès',
-            EmployeeResouce::collection($employees)
-        );
+
+        $employees = Employee::paginate($perPage);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $employees,
+            'message' => 'Employés récupérés avec succès',
+        ], 200);
     }
 
     /**
@@ -76,10 +52,10 @@ class EmployeeController extends Controller
 
         DB::beginTransaction();
         try {
-            
+
             // Créer l'employé
             $employee = Employee::create([
-                'employee_code' => 'CODE-' . date('YmdHis') . rand(100, 999),
+                'employee_code' => generateEmployeeCode($request->first_name, $request->last_name),
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
@@ -87,24 +63,24 @@ class EmployeeController extends Controller
                 'position' => $request->position,
                 'department_id' => $request->department_id,
                 'salary' => $request->salary,
-                'status' => $request->status,
+                'status' => 'Active',
 
             ]);
-            
+
             DB::commit();
-            
-            return successResponse(
-                'Employé créé avec succès',
-                new EmployeeResouce($employee->load(['department'])),
-                201
-            );
-            
+
+            return response()->json([
+                'status' => 'success',
+                'data' => new EmployeeResouce($employee->load(['department'])),
+                'message' => 'Employé créé avec succès',
+            ], 201);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return errorResponse(
-                'Erreur lors de la création: ' . $e->getMessage(),
-                500
-            );
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la création: ' . $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -116,7 +92,7 @@ class EmployeeController extends Controller
         if (!auth()->user()->can('view employee')) {
             return errorResponse('Vous n\'avez pas la permission de voir les employés', 403);
         }
-        
+
         return SuccessResponse(
             'Employé récupéré avec succès',
             new EmployeeResouce($employee->load(['department']))
@@ -131,7 +107,7 @@ class EmployeeController extends Controller
         if (!auth()->user()->can('update employee')) {
             return errorResponse('Vous n\'avez pas la permission de modifier des employés', 403);
         }
-        
+
         $validator = Validator::make($request->all(), [
             'phone' => 'nullable|string',
             'position' => 'required|string',
@@ -149,17 +125,17 @@ class EmployeeController extends Controller
             //     'phone' => $request->phone,
             //     'role' => $request->role ?? $employee->user->role,
             // ]);
-            
+
             // Mettre à jour l'employé
             $employee->update($request->except(['name', 'email', 'phone', 'password', 'role']));
-            
+
             DB::commit();
-            
+
             return successResponse(
                 'Employé mis à jour avec succès',
                 new EmployeeResouce($employee->load(['department']))
             );
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             return errorResponse(
@@ -181,13 +157,13 @@ class EmployeeController extends Controller
         try {
             // $employee->user->delete();
             $employee->delete();
-            
+
             DB::commit();
-            
+
             return successResponse(
                 'Employé supprimé avec succès'
             );
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             return errorResponse(
@@ -213,12 +189,12 @@ class EmployeeController extends Controller
 
     /**
      * Historique des paies
-     */ 
+     */
     public function payrollHistory(Employee $employee)
     {
         if (!auth()->user()->can('view employee')) {
             return errorResponse('Vous n\'avez pas la permission de voir les paies', 403);
-        }   
+        }
         return successResponse(
             'Historique des paies récupéré avec succès',
             $employee->payrolls()->latest()->paginate(12)
@@ -231,15 +207,18 @@ class EmployeeController extends Controller
     public function activate(Employee $employee)
     {
         if (!auth()->user()->can('activate employee')) {
-            return errorResponse('Vous n\'avez pas la permission d\'activer des employés', 403);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vous n\'avez pas la permission d\'activer des employés',
+            ], 403);
         }
-        $employee->update(['status' => 'Activate']);
-        
-        return successResponse(
-            'Employé activé avec succès',
-            new EmployeeResouce($employee->load(['department'])),
-            200
-        );
+        $employee->update(['status' => 'Active']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new EmployeeResouce($employee->load(['department'])),
+            'message' => 'Employé activé avec succès',
+        ], 200);
     }
 
     /**
@@ -252,17 +231,19 @@ class EmployeeController extends Controller
         }
         try {
             //code...
-        
-            $employee->update(['status' => 'Deactivate']);
-            
-            return successResponse(
-                'Employé désactivé avec succès',
-                new EmployeeResouce($employee->load(['department'])),
-                200
-            );
+            $employee->update(['status' => 'Inactive']);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => new EmployeeResouce($employee->load(['department'])),
+                'message' => 'Employé désactivé avec succès',
+            ], 200);
         } catch (\Throwable $th) {
             //throw $th;
-            return errorResponse('Erreur lors de la désactivation de l\'employé', 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la désactivation de l\'employé',
+            ], 500);
         }
     }
 }

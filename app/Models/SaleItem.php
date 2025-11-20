@@ -25,4 +25,9 @@ class SaleItem extends Model
     {
         return $this->belongsTo(Sale::class);
     }
+
+    public function getProductNameAttribute()
+    {
+        return $this->produit->name;
+    }
 }
