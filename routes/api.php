@@ -47,12 +47,12 @@ use App\Http\Controllers\api\access\RolePermissionController;
 // users
 
 Route::middleware('auth:sanctum')->group(function () {
-
-    Route::delete('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'deleteUser']);
-    Route::put('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'updateUser']);
     Route::get('users', [\App\Http\Controllers\api\auth\UserController::class, 'getAllUsers']);
+    Route::put('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'updateUser']);
+    Route::delete('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'deleteUser']);
     Route::get('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'getUser']);
     Route::get('users/{user}/show', [\App\Http\Controllers\api\auth\UserController::class, 'showUser']);
+
 
 // Products
     Route::apiResource('products', ProductController::class);
@@ -116,10 +116,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('taxes/{tax}/deactivate', [TaxeController::class, 'deactivate']);
 
      // 🔹 Gestion des rôles
-    Route::apiResource('roles', RoleController::class);
-
+    Route::apiResource('roles', RolePermissionController::class);
     // 🔹 Gestion des permissions
-    Route::apiResource('permissions', PermissionController::class);
+    // Route::apiResource('permissions', PermissionController::class);
+    Route::post('roles/{role}/give-permissions', [RolePermissionController::class, 'givePermissions']);
+    Route::delete('roles/{role}/revoke-permissions', [RolePermissionController::class, 'revokePermissions']);
 
     // 🔹 Attribution de rôles et permissions aux utilisateurs
     Route::post('users/{user}/assign-role', [UserRoleController::class, 'assignRole']);
@@ -128,8 +129,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('users/{user}/revoke-permission', [UserRoleController::class, 'revokePermission']);
 
     //
-    Route::post('roles/{role}/give-permissions', [RolePermissionController::class, 'givePermissions']);
-    Route::post('roles/{role}/revoke-permissions', [RolePermissionController::class, 'revokePermissions']);
 
 
 });

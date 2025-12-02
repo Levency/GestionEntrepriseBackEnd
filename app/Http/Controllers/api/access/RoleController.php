@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 
 class RoleController extends Controller
 {
-     public function index()
+    public function index()
     {
         return successResponse(
             'Liste des roles',

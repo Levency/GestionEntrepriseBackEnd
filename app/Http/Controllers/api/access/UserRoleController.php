@@ -13,16 +13,22 @@ class UserRoleController extends Controller
         $request->validate(['role' => 'required|exists:roles,name']);
         $user->assignRole($request->role);
         
-        return successResponse(['message' => 'Rôle attribué avec succès'],
-            $user->load('roles.permissions'),
-         200);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rôle attribué avec succès',
+            'data' => $user
+            ]);
     }
 
     public function removeRole(Request $request, User $user)
     {
         $request->validate(['role' => 'required|exists:roles,name']);
         $user->removeRole($request->role);
-        return response()->json(['message' => 'Rôle retiré avec succès']);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rôle retirer avec succès',
+            'data' => $user
+            ]);
     }
 
     public function givePermission(Request $request, User $user)

@@ -17,23 +17,24 @@ class UserController extends Controller
     // --- IGNORE ---
     public function getUser(Request $request)
     {
-        return successResponse(
-            UserResource::make($request->user()->load('employee')),
-            null,
-            'User retrieved successfully'
-        );
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User retrieved successfully',
+            'data' => new UserResource($request->user()->with('roles','permissions','employee')),
+        ]);
     }
 
     public function getAllUsers()
     {
         $users = UserResource::collection(\App\Models\User::with('employee')->get());
 
-        return successResponse(
-            $users,
-            null,
-            'Users retrieved successfully'
-        );
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Users retrieved successfully',
+            'data' => $users,
+        ]);
     }
+
 
     public function deleteUser(User $user)
     {
@@ -56,28 +57,23 @@ class UserController extends Controller
         }
     }
 
+    /*
+    * Deactivate or Activate User
+    */
     public function updateUser(Request $request, User $user)
     {
-        $validatedData = $request->validate([
-            'user_name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'role' => 'sometimes|string|in:admin,user,manager',
-            'status' => 'sometimes|string|in:active,inactive',
+        $request->validate([
+            'is_active' => 'required|boolean',
         ]);
 
-        try {
-            //code...
-            $user->update($validatedData);
+        $user->is_active = $request->is_active;
+        $user->save();
 
-            return successResponse(
-                UserResource::make($user->load('employee')),
-                null,
-                'User updated successfully'
-            );
-        } catch (\Throwable $th) {
-            //throw $th;
-            return errorResponse('An error occurred while updating the user', 500);
-        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User status updated successfully',
+            'data' => new UserResource($user),
+        ]);
     }
 
     public function showUser(User $user)
