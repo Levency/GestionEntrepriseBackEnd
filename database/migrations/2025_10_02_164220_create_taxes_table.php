@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
              $table->string('name');
             $table->decimal('rate', 5, 2); // percentage
-            $table->enum('type', ['sales_tax', 'vat', 'income_tax', 'other'])->default('sales_tax');
+            $table->string('type', );
             $table->boolean('is_active')->default(true);
             $table->text('description')->nullable();
             $table->timestamps();

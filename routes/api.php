@@ -42,16 +42,21 @@ use App\Http\Controllers\api\access\RolePermissionController;
     Route::post('login', [AuthController::class, 'login'])->name('login');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('logout', [AuthController::class, 'logout']);
+    // Route::post('logout', [AuthController::class, 'logout']);
 
 // users
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('users', [\App\Http\Controllers\api\auth\UserController::class, 'getAllUsers']);
-    Route::put('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'updateUser']);
+    Route::get('users', [\App\Http\Controllers\api\auth\UserController::class, 'getAllUsers']); 
+    Route::put('users/{user}/update-status', [\App\Http\Controllers\api\auth\UserController::class, 'updateUser']);
     Route::delete('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'deleteUser']);
     Route::get('users/{user}', [\App\Http\Controllers\api\auth\UserController::class, 'getUser']);
     Route::get('users/{user}/show', [\App\Http\Controllers\api\auth\UserController::class, 'showUser']);
+
+    Route::get('profile', [\App\Http\Controllers\api\auth\ProfileController::class, 'getProfile']);
+    Route::put('profile/update', [\App\Http\Controllers\api\auth\ProfileController::class, 'updateProfile']);
+    Route::put('profile/change-password', [\App\Http\Controllers\api\auth\ProfileController::class, 'changePassword']);
+    Route::post('logout', [\App\Http\Controllers\api\auth\ProfileController::class, 'logout']);
 
 
 // Products

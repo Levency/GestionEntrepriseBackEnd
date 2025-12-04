@@ -23,8 +23,16 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $products = Produit::with(['category', 'stockMouvements'])
-            ->paginate($request->get('per_page', 15));
+        // Initialiser la requête
+        $query = Produit::with(['category', 'stockMouvements']);
+
+        // Ajouter le filtre par catégorie si présent
+        if ($request->has('category_id') && $request->category_id != null) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Exécuter la pagination
+        $products = $query->paginate($request->get('per_page', 15));
 
         return response()->json([
             'success' => true,
@@ -127,7 +135,6 @@ class ProductController extends Controller
         $request->stock_quantity = $request->stock_quantity ?? 0;
         $request->purchase_price = $request->purchase_price ?? 0;
         $request->selling_price = $request->selling_price ?? 0;
-        $request->code = $request->code ?? 'PROD-' . strtoupper(uniqid());
 
 
 

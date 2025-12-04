@@ -12,15 +12,7 @@ class ProfileController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'status' => $user->status,
-                'created_at' => $user->created_at,
-                'updated_at' => $user->updated_at,
-            ],
+            'data' => $user->load('roles','permissions','employee'),
             'message' => 'User profile retrieved successfully',
         ], 200);
     }
@@ -30,14 +22,14 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $validatedData = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'user_name' => 'sometimes|string|max:255',
         ]);
 
         $user->update($validatedData);
 
         return response()->json([
-            'data' => $user,
+            'status' => 'success',
+            'data' => $user->load('roles','permissions','employee'),
             'message' => 'User profile updated successfully',
         ], 200);
     }
@@ -62,7 +54,9 @@ class ProfileController extends Controller
         ]);
 
         return response()->json([
+            'status' => 'success',
             'message' => 'Password changed successfully',
+            'data' => $user->load('roles','permissions','employee')
         ], 200);
     }
 
