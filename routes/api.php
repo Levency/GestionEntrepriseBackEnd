@@ -134,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('users/{user}/revoke-permission', [UserRoleController::class, 'revokePermission']);
 
     //
+    Route::apiResource('settings', \App\Http\Controllers\SettingsController::class);
 
 
 });

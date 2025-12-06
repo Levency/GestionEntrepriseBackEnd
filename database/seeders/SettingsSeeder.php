@@ -12,6 +12,6 @@ class SettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        \App\Models\Settings::factory()->create();
     }
 }

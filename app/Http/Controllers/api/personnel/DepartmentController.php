@@ -16,7 +16,7 @@ class DepartmentController extends Controller
      */
     public function index()
     {
-        $deparments = Departement::all();
+        $deparments = Departement::latest('created_at')->get();
         return response()->json([
             'status' => 'success',
             'data' => $deparments,

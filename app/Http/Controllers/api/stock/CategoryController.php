@@ -13,9 +13,11 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        return successResponse(
-            CategoryResource::collection(Category::all()->loadCount('products'))
-        );
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Liste des catégories',
+            'data' => CategoryResource::collection(Category::all()),
+        ]);
     }
 
     public function store(Request $request)

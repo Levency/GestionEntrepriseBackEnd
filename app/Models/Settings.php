@@ -9,14 +9,11 @@ class Settings extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'site_name',
-        'site_logo',
-        'contact_email',
-        'contact_phone',
+        'name',
+        'logo',
+        'email',
+        'phone',
         'address',
-        'currency',
-        'timezone',
-        'language',
     ];
     
 }

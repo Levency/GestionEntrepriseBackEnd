@@ -142,6 +142,8 @@ class AuthController extends Controller
         ]);
     }
 
+    
+
     /**
      * Déconnexion de l'utilisateur (Logout)
      */

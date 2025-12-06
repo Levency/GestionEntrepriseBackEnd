@@ -19,7 +19,7 @@ class RapportController extends Controller
         $groupBy = $request->get('group_by', 'day'); // day, week, month
         
         $dates = $this->getPeriodDates($period);
-        $sales = Sale::whereBetween('sale_date', [$dates['start'], $dates['end']])
+        $sales = Sale::whereBetween('craeted_at', [$dates['start'], $dates['end']])
             ->where('status', 'completed')
             ->get();
         
@@ -75,7 +75,7 @@ class RapportController extends Controller
         $startDate = $request->get('start_date', now()->subMonths(3));
         $endDate = $request->get('end_date', now());
         
-        $sales = Sale::whereBetween('sale_date', [$startDate, $endDate])
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('customer_id')
             ->with('customer')
             ->get();
@@ -112,7 +112,7 @@ class RapportController extends Controller
         $productStats = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
-            ->whereBetween('sales.sale_date', [$startDate, $endDate])
+            ->whereBetween('sales.created_at', [$startDate, $endDate])
             ->select(
                 'products.id',
                 'products.name',
@@ -178,8 +178,8 @@ class RapportController extends Controller
             $endDate = $date->endOfMonth()->format('Y-m-d');
             
             $value = match($type) {
-                'sales' => Sale::whereBetween('sale_date', [$startDate, $endDate])->count(),
-                'revenue' => Sale::whereBetween('sale_date', [$startDate, $endDate])->sum('total'),
+                'sales' => Sale::whereBetween('created_at', [$startDate, $endDate])->count(),
+                'revenue' => Sale::whereBetween('created_at', [$startDate, $endDate])->sum('total'),
                 'inventory' => Produit::sum(DB::raw('stock_quantity * purchase_price')),
                 default => 0,
             };

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Validator;
 
 class SalesController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $perPage = $request->get('per_page', 15);
         $status = $request->get('status');
@@ -529,7 +529,7 @@ class SalesController extends Controller
     {
         $today = now()->startOfDay();
         
-        $sales = Sale::whereDate('sale_date', $today)
+        $sales = Sale::whereDate('created_at', $today)
             ->where('status', 'completed')
             ->get();
         
